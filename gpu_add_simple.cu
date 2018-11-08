@@ -8,18 +8,7 @@
 
 
 
-//#define T 64//1024
-//#define N T*10//4096*T
 #define NN 200
-
-/*// Kernel function to add the elements of two arrays
-__global__ void add_cuda(int *x, int *y)
-{
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
-  int stride = blockDim.x * gridDim.x;
-  for (int i = index; i < N; i += stride)
-    y[i] = x[i] + y[i];
-}*/
 
 
 __global__ void add_cuda_good(int *x,int *y)
@@ -42,34 +31,6 @@ __global__ void add_cuda_good(int *x,int *y)
    }
   
 }
-
-
-/*__global__ void add_cuda_bad(int *x,int *y)
-{
-  __shared__ int s_x[T];
-  __shared__ int s_y[T];
-  int tid = threadIdx.x;
-  int i = blockDim.x * blockIdx.x + threadIdx.x;
-//  if (!threadIdx.x) 
-  {
-    s_x[tid] = x[i];
-    s_y[tid] = y[i];
-   // memcpy(s_x,x+blockDim.x * blockIdx.x,T * sizeof(int));
-   // memcpy(s_y,y+blockDim.x * blockIdx.x,T * sizeof(int));
-  }
-  __syncthreads();
-
-  s_y[threadIdx.x] += s_x[threadIdx.x];
-
-
- // __syncthreads();
- //if (!threadIdx.x)
- {
-   y[i] = s_y[tid];
-  //  memcpy(y+blockDim.x * blockIdx.x,s_y,T * sizeof(int));
-  }
-}
-*/
 
 
 void add_cpu_bad(int *x ,int *y, int size)
@@ -136,7 +97,6 @@ int main(int argc, char** argv)
 
   sscanf(argv[1] ,"%d", &N);
   sscanf(argv[2], "%d", &T);
-  printf("T=%d,N=%d\n",T,N);
 
 clock_gettime(CLOCK_MONOTONIC, &start);
   // Allocate Unified Memory – accessible from CPU or GPU
@@ -149,15 +109,12 @@ clock_gettime(CLOCK_MONOTONIC, &end);
   printf("\n\n\n  timeElapsed for init = %d\n",timeElapsedGPU);
 
   arr_init(x,y,N);
-  print_1D_arr("CUDA:Input",x,10);
-  //int blockSize = 1;//4;//256;
-  int blockSize = T;//4;//256;
-  //int numBlocks = 1;//(N + blockSize - 1) / blockSize;
-  int numBlocks = N/blockSize;//(N + blockSize - 1) / blockSize;
+//  print_1D_arr("CUDA:Input",x,10);
+  int blockSize = T;
+  int numBlocks = N/blockSize;
   printf(" numBlocks=%d, blockSize=%d\n", numBlocks, blockSize);
-  //add_cuda<<<numBlocks, blockSize>>>( x, y);
- clock_gettime(CLOCK_MONOTONIC, &start);  
-add_cuda_good<<<numBlocks, blockSize>>>( x, y);
+clock_gettime(CLOCK_MONOTONIC, &start);  
+  add_cuda_good<<<numBlocks, blockSize>>>( x, y);
 
   // Wait for GPU to finish before accessing on host
   cudaDeviceSynchronize();
@@ -166,18 +123,18 @@ clock_gettime(CLOCK_MONOTONIC, &end);
   timeElapsedGPU = timespecDiff(&end, &start);
   printf("\n\n\n  timeElapsed GPU = %d\n",timeElapsedGPU);
   printf("\n  Time Diff Sec GPU = %d\n",timeDiffSec(&end,&start));
-  print_1D_arr("CUDA:Output",y,10);
-  printf("\n\n\n----Final check:%d\n", y[N-1]);
+//  print_1D_arr("CUDA:Output",y,10);
+//  printf("\n\n\n----Final check:%d\n", y[N-1]);
 
   arr_init(x,y,N);
-  print_1D_arr("CUDA:Input",x,10);
+//  print_1D_arr("CUDA:Input",x,10);
 
-  clock_gettime(CLOCK_MONOTONIC, &start);
+clock_gettime(CLOCK_MONOTONIC, &start);
 
   // Some code I am interested in measuring 
   add_cpu_bad(x,y,N);
 
-  clock_gettime(CLOCK_MONOTONIC, &end);
+clock_gettime(CLOCK_MONOTONIC, &end);
 
   timeElapsedCPU = timespecDiff(&end, &start);
   printf("\n\n\n  timeElapsed CPU= %d ratio:%f\n",timeElapsedCPU, (float)timeElapsedCPU/timeElapsedGPU);
